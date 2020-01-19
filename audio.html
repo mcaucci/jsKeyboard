@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<head>
+	<style>
+	#C,#D, #E, #F, #G, #A, #B, #c {
+		height: 170px;
+		width: 50px;
+	}
+	</style>
+</head>
+<script>
+	var notes = {'KeyZ': 262, 'KeyX': 294, 'KeyC': 330, 'KeyV': 349, 'KeyB': 392, 'KeyN': 440, 'KeyM': 494, 'Comma': 523};
+	var audioCtx;
+	var osc;
+	var gainNode;
+	var isOn = false;
+	init = function() {
+		audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+		osc = audioCtx.createOscillator();
+		gainNode = audioCtx.createGain();
+		osc.type = 'sine';
+		osc.start()
+		gainNode.connect(audioCtx.destination);
+	}
+
+	on = function(note) {
+		if (isOn) {
+			off();
+		}
+		if (notes[note]) {
+			osc.frequency.value = notes[note];
+			osc.connect(gainNode);
+			isOn = true;
+			console.log('look, a note!');
+		}
+	}
+
+	off = function() {
+		if (isOn) {
+			osc.disconnect(gainNode);
+			isOn = false;
+		}
+	}
+
+	document.addEventListener('keydown', function(e) {
+		console.log(e.code);
+		on(e.code);
+	})
+
+	document.addEventListener('keyup', function() {
+		off();
+	})
+</script>
+<div>
+	<button id="start" onclick="init()">Start</button>
+</div>
+<button id="C" onmousedown="on('KeyZ')" onmouseup="off()">C</button>
+<button id="D" onmousedown="on('KeyX')" onmouseup="off()">D</button>
+<button id="E" onmousedown="on('KeyC')" onmouseup="off()">E</button>
+<button id="F" onmousedown="on('KeyV')" onmouseup="off()">F</button>
+<button id="G" onmousedown="on('KeyB')" onmouseup="off()">G</button>
+<button id="A" onmousedown="on('KeyN')" onmouseup="off()">A</button>
+<button id="B" onmousedown="on('KeyM')" onmouseup="off()">B</button>
+<button id="c" onmousedown="on('Comma')" onmouseup="off()">c</button>

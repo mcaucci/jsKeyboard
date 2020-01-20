@@ -1,19 +1,153 @@
 <!DOCTYPE html>
+<html>
 <head>
+<meta name="viewport" content="width=device-width, height=device-height, initial-scale=1, maximum-scale=1, user-scalable=no">
 	<style>
-	#C,#D, #E, #F, #G, #A, #B, #c {
-		height: 170px;
-		width: 50px;
+	
+	body {
+		height: 100%;
+		width: 100%;
+	}
+	
+	.white {
+		background-color: white;
+		z-index: 10;
+	}
+	
+	.black {
+		background-color: black;
+		z-index: 20;
+		position: absolute;
+	}
+	
+	@media (orientation: landscape) {
+		html {
+			height: 97%;
+			width: 97%;
+		}
+		
+		#C, #D, #E, #F, #G, #A, #B, #c {
+			width: 10%;
+			height: 100%;
+		}
+		
+		.black {
+			top: 2.5%;
+		}
+		
+		#Db, #Eb, #Gb, #Ab, #Bb {
+			width: 8%;
+			height: 50%;
+		}
+		
+		#Db {
+			left: 7%;
+		}
+		
+		#Eb {
+			left: 16.5%;
+		}
+		
+		#Gb {
+			left: 36%;
+		}
+		
+		#Ab {
+			left: 46%;
+		}
+		
+		#Bb {
+			left: 55.5%;
+		}
+	}
+	
+	@media (orientation: portrait) {
+		html {
+			height: 97%;
+			width: 97%;
+		}
+		
+		#C,#D, #E, #F, #G, #A, #B, #c {
+			width: 12.5%;
+			height: 50%;
+		}
+		
+		.black {
+			top: 1.4%;
+		}
+		
+		#Db, #Eb, #Gb, #Ab, #Bb {
+			width: 10%;
+			height: 25%;
+		}
+		
+		#Db {
+			left: 9%;
+		}
+		
+		#Eb {
+			left: 21%;
+		}
+		
+		#Gb {
+			left: 45%;
+		}
+		
+		#Ab {
+			left: 57%;
+		}
+		
+		#Bb {
+			left: 70%;
+		}
+	}
+	
+	@media only screen and (min-width: 768px){
+		#C,#D, #E, #F, #G, #A, #B, #c {
+			height: 400px;
+			width: 100px;
+		}
+		
+		.black {
+			top: 8px;
+		}
+		
+		#Db, #Eb, #Gb, #Ab, #Bb {
+			height: 190px;
+			width: 70px;
+		}
+		
+		#Db {
+			left: 73px;
+		}
+		
+		#Eb {
+			left: 173px;
+		}
+		
+		#Gb {
+			left: 373px;
+		}
+		
+		#Ab {
+			left: 473px;
+		}
+		
+		#Bb {
+			left: 573px;
+		}
 	}
 	</style>
 </head>
 <script>
-	var notes = {'KeyZ': 262, 'KeyX': 294, 'KeyC': 330, 'KeyV': 349, 'KeyB': 392, 'KeyN': 440, 'KeyM': 494, 'Comma': 523};
+	var notes = {'KeyZ': 262, 'KeyS': 277, 'KeyX': 294, 'KeyD': 311, 'KeyC': 330, 'KeyV': 349, 'KeyG': 370, 'KeyB': 392, 'KeyH': 415, 'KeyN': 440, 'KeyJ': 466, 'KeyM': 494, 'Comma': 523};
 	var audioCtx;
 	var oscOne;
 	var oscTwo;
 	var distortion;
 	var delay;
+	var feedback;
+	var filter = [];
 	var gainNode;
 	var isStarted = false;
 	var isOn = false;
@@ -21,23 +155,46 @@
 	init = function() {
 		audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 		
+		// Oscillator 1
 		oscOne = audioCtx.createOscillator();
 		oscOne.type = 'triangle';
 		oscOne.start()
 		
+		// Oscillator 2
 		oscTwo = audioCtx.createOscillator();
 		oscTwo.type = 'square';
 		oscTwo.start();
 		
+		// Distorsion
 		distortion = audioCtx.createWaveShaper();
-		distortion.curve = makeDistortionCurve(1000);
+		distortion.curve = makeDistortionCurve(20);
 		
+		// Delay
 		delay = audioCtx.createDelay();
-		delay.delayTime.value = 0.07;
+		delay.delayTime.value = 0.12;
 		
+		// Feedback
+		feedback = audioCtx.createGain();
+		feedback.gain.value = 0.25;
+		
+		// Filters
+		for (var i = 0; i < 3; i++) {
+			
+			var filt = audioCtx.createBiquadFilter();
+			filt.frequency.value = 2500 - 1000 * i;
+			filter.push(filt);
+		}
+		
+		// Gain
 		gainNode = audioCtx.createGain();
 		
-		distortion.connect(gainNode);
+		// Connection chain
+		distortion.connect(delay);
+		for (var i = 0; i < 3; i++) {
+			delay.connect(feedback);
+			feedback.connect(filter[i]);
+			filter[i].connect(delay);
+		}
 		delay.connect(audioCtx.destination);
 		gainNode.connect(audioCtx.destination);
 	}
@@ -91,11 +248,21 @@
 		off();
 	})
 </script>
-<button id="C" onmousedown="on('KeyZ')" onmouseup="off()">C</button>
-<button id="D" onmousedown="on('KeyX')" onmouseup="off()">D</button>
-<button id="E" onmousedown="on('KeyC')" onmouseup="off()">E</button>
-<button id="F" onmousedown="on('KeyV')" onmouseup="off()">F</button>
-<button id="G" onmousedown="on('KeyB')" onmouseup="off()">G</button>
-<button id="A" onmousedown="on('KeyN')" onmouseup="off()">A</button>
-<button id="B" onmousedown="on('KeyM')" onmouseup="off()">B</button>
-<button id="c" onmousedown="on('Comma')" onmouseup="off()">c</button>
+<body>
+	<button id="C" class="white" onmousedown="on('KeyZ')" onmouseup="off()"></button><!--
+	--><button id="D" class="white" onmousedown="on('KeyX')" onmouseup="off()"></button><!--
+	--><button id="E" class="white" onmousedown="on('KeyC')" onmouseup="off()"></button><!--
+	--><button id="F" class="white" onmousedown="on('KeyV')" onmouseup="off()"></button><!--
+	--><button id="G" class="white" onmousedown="on('KeyB')" onmouseup="off()"></button><!--
+	--><button id="A" class="white" onmousedown="on('KeyN')" onmouseup="off()"></button><!--
+	--><button id="B" class="white" onmousedown="on('KeyM')" onmouseup="off()"></button><!--
+	--><button id="c" class="white" onmousedown="on('Comma')" onmouseup="off()"></button><!--
+	--><span></span><!--
+	--><button id="Db" class="black" onmousedown="on('KeyS')" onmouseup="off()"></button><!--
+	--><button id="Eb" class="black" onmousedown="on('KeyD')" onmouseup="off()"></button><!--
+	--><button id="Gb" class="black" onmousedown="on('KeyG')" onmouseup="off()"></button><!--
+	--><button id="Ab" class="black" onmousedown="on('KeyH')" onmouseup="off()"></button><!--
+	--><button id="Bb" class="black" onmousedown="on('KeyJ')" onmouseup="off()"></button><!--
+	-->
+</body>
+</html>

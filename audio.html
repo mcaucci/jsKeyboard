@@ -10,39 +10,80 @@
 <script>
 	var notes = {'KeyZ': 262, 'KeyX': 294, 'KeyC': 330, 'KeyV': 349, 'KeyB': 392, 'KeyN': 440, 'KeyM': 494, 'Comma': 523};
 	var audioCtx;
-	var osc;
+	var oscOne;
+	var oscTwo;
+	var distortion;
+	var delay;
 	var gainNode;
+	var isStarted = false;
 	var isOn = false;
+	
 	init = function() {
 		audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-		osc = audioCtx.createOscillator();
+		
+		oscOne = audioCtx.createOscillator();
+		oscOne.type = 'triangle';
+		oscOne.start()
+		
+		oscTwo = audioCtx.createOscillator();
+		oscTwo.type = 'square';
+		oscTwo.start();
+		
+		distortion = audioCtx.createWaveShaper();
+		distortion.curve = makeDistortionCurve(1000);
+		
+		delay = audioCtx.createDelay();
+		delay.delayTime.value = 0.07;
+		
 		gainNode = audioCtx.createGain();
-		osc.type = 'sine';
-		osc.start()
+		
+		distortion.connect(gainNode);
+		delay.connect(audioCtx.destination);
 		gainNode.connect(audioCtx.destination);
 	}
+	
+	makeDistortionCurve = function(amount) {
+		var k = typeof amount === 'number' ? amount : 50,
+			n_samples = 44100,
+			curve = new Float32Array(n_samples),
+			deg = Math.PI / 180,
+			i = 0,
+			x;
+		for ( ; i < n_samples; ++i ) {
+			x = i * 2 / n_samples - 1;
+			curve[i] = ( 3 + k ) * x * 20 * deg / ( Math.PI + k * Math.abs(x) );
+		}
+		return curve;
+	};
 
 	on = function(note) {
+		if (!isStarted) {
+			init();
+			isStarted = true;
+		}
 		if (isOn) {
 			off();
 		}
 		if (notes[note]) {
-			osc.frequency.value = notes[note];
-			osc.connect(gainNode);
+			oscOne.frequency.value = notes[note];
+			oscTwo.frequency.value = notes[note] / 2;
+			oscOne.connect(distortion);
+			oscOne.connect(delay);
+			oscTwo.connect(distortion);
 			isOn = true;
-			console.log('look, a note!');
 		}
 	}
 
 	off = function() {
 		if (isOn) {
-			osc.disconnect(gainNode);
+			oscOne.disconnect(distortion);
+			oscOne.disconnect(delay);
+			oscTwo.disconnect(distortion);
 			isOn = false;
 		}
 	}
 
 	document.addEventListener('keydown', function(e) {
-		console.log(e.code);
 		on(e.code);
 	})
 
@@ -50,9 +91,6 @@
 		off();
 	})
 </script>
-<div>
-	<button id="start" onclick="init()">Start</button>
-</div>
 <button id="C" onmousedown="on('KeyZ')" onmouseup="off()">C</button>
 <button id="D" onmousedown="on('KeyX')" onmouseup="off()">D</button>
 <button id="E" onmousedown="on('KeyC')" onmouseup="off()">E</button>

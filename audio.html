@@ -158,7 +158,7 @@
 		// Oscillator 1
 		oscOne = audioCtx.createOscillator();
 		oscOne.type = 'triangle';
-		oscOne.start()
+		oscOne.start();
 		
 		// Oscillator 2
 		oscTwo = audioCtx.createOscillator();
@@ -170,33 +170,58 @@
 		distortion.curve = makeDistortionCurve(20);
 		
 		// Delay
-		delay = audioCtx.createDelay();
-		delay.delayTime.value = 0.12;
+		delay = new LoRes();
 		
 		// Feedback
 		feedback = audioCtx.createGain();
 		feedback.gain.value = 0.25;
 		
-		// Filters
-		for (var i = 0; i < 3; i++) {
-			
-			var filt = audioCtx.createBiquadFilter();
-			filt.frequency.value = 2500 - 1000 * i;
-			filter.push(filt);
-		}
-		
 		// Gain
 		gainNode = audioCtx.createGain();
 		
 		// Connection chain
-		distortion.connect(delay);
-		for (var i = 0; i < 3; i++) {
-			delay.connect(feedback);
-			feedback.connect(filter[i]);
-			filter[i].connect(delay);
-		}
+		distortion.connect(delay.input);
+		distortion.connect(gainNode);
 		delay.connect(audioCtx.destination);
 		gainNode.connect(audioCtx.destination);
+	}
+	
+	function LoRes() {
+		this.input = audioCtx.createGain();
+		var output = audioCtx.createGain();
+		
+		var delay = [];
+		var filter = [];
+		var feedback = [];
+		for (var i = 0; i < 6; i++) {
+			var del = audioCtx.createDelay();
+			del.delayTime.value = 0.1 + 0.03 * i;
+			delay.push(del);
+			
+			var feed = audioCtx.createGain();
+			feed.gain.value = 0.7 - 0.1 * i;
+			feedback.push(feed);
+			
+			var filt = audioCtx.createBiquadFilter();
+			filt.frequency.value = 3000 - 500 * i;
+			filter.push(filt);
+		}
+		
+		this.input.connect(output);
+		this.input.connect(delay[0]);
+		for (var i = 0; i < 6; i++) {
+			delay[i].connect(feedback[i]);
+			feedback[i].connect(filter[i]);
+			filter[i].connect(output);
+			if (i < 5) {
+				filter[i].connect(delay[i + 1]);
+			}
+		}
+		filter[5].connect(output);
+		
+		this.connect = function(target){
+			output.connect(target);
+		}
 	}
 	
 	makeDistortionCurve = function(amount) {
@@ -225,7 +250,7 @@
 			oscOne.frequency.value = notes[note];
 			oscTwo.frequency.value = notes[note] / 2;
 			oscOne.connect(distortion);
-			oscOne.connect(delay);
+			oscOne.connect(delay.input);
 			oscTwo.connect(distortion);
 			isOn = true;
 		}
@@ -234,7 +259,7 @@
 	off = function() {
 		if (isOn) {
 			oscOne.disconnect(distortion);
-			oscOne.disconnect(delay);
+			oscOne.disconnect(delay.input);
 			oscTwo.disconnect(distortion);
 			isOn = false;
 		}
@@ -249,20 +274,20 @@
 	})
 </script>
 <body>
-	<button id="C" class="white" onmousedown="on('KeyZ')" onmouseup="off()"></button><!--
-	--><button id="D" class="white" onmousedown="on('KeyX')" onmouseup="off()"></button><!--
-	--><button id="E" class="white" onmousedown="on('KeyC')" onmouseup="off()"></button><!--
-	--><button id="F" class="white" onmousedown="on('KeyV')" onmouseup="off()"></button><!--
-	--><button id="G" class="white" onmousedown="on('KeyB')" onmouseup="off()"></button><!--
-	--><button id="A" class="white" onmousedown="on('KeyN')" onmouseup="off()"></button><!--
-	--><button id="B" class="white" onmousedown="on('KeyM')" onmouseup="off()"></button><!--
-	--><button id="c" class="white" onmousedown="on('Comma')" onmouseup="off()"></button><!--
+	   <button id="C" class="white" onmousedown="on('KeyZ')" onmouseup="off()" ontouchstart="on('KeyZ')" ontouchend="on('KeyZ')"></button><!--
+	--><button id="D" class="white" onmousedown="on('KeyX')" onmouseup="off()" ontouchstart="on('KeyX')" ontouchend="on('KeyX')"></button><!--
+	--><button id="E" class="white" onmousedown="on('KeyC')" onmouseup="off()" ontouchstart="on('KeyC')" ontouchend="on('KeyC')"></button><!--
+	--><button id="F" class="white" onmousedown="on('KeyV')" onmouseup="off()" ontouchstart="on('KeyV')" ontouchend="on('KeyV')"></button><!--
+	--><button id="G" class="white" onmousedown="on('KeyB')" onmouseup="off()" ontouchstart="on('KeyB')" ontouchend="on('KeyB')"></button><!--
+	--><button id="A" class="white" onmousedown="on('KeyN')" onmouseup="off()" ontouchstart="on('KeyN')" ontouchend="on('KeyN')"></button><!--
+	--><button id="B" class="white" onmousedown="on('KeyM')" onmouseup="off()" ontouchstart="on('KeyM')" ontouchend="on('KeyM')"></button><!--
+	--><button id="c" class="white" onmousedown="on('Comma')" onmouseup="off()" ontouchstart="on('Comma')" ontouchend="on('Comma')"></button><!--
 	--><span></span><!--
-	--><button id="Db" class="black" onmousedown="on('KeyS')" onmouseup="off()"></button><!--
-	--><button id="Eb" class="black" onmousedown="on('KeyD')" onmouseup="off()"></button><!--
-	--><button id="Gb" class="black" onmousedown="on('KeyG')" onmouseup="off()"></button><!--
-	--><button id="Ab" class="black" onmousedown="on('KeyH')" onmouseup="off()"></button><!--
-	--><button id="Bb" class="black" onmousedown="on('KeyJ')" onmouseup="off()"></button><!--
+	--><button id="Db" class="black" onmousedown="on('KeyS')" onmouseup="off() ontouchstart="on('KeyS')" ontouchend="on('KeyS')"></button><!--
+	--><button id="Eb" class="black" onmousedown="on('KeyD')" onmouseup="off() ontouchstart="on('KeyD')" ontouchend="on('KeyD')"></button><!--
+	--><button id="Gb" class="black" onmousedown="on('KeyG')" onmouseup="off() ontouchstart="on('KeyG')" ontouchend="on('KeyG')"></button><!--
+	--><button id="Ab" class="black" onmousedown="on('KeyH')" onmouseup="off() ontouchstart="on('KeyH')" ontouchend="on('KeyH')"></button><!--
+	--><button id="Bb" class="black" onmousedown="on('KeyJ')" onmouseup="off() ontouchstart="on('KeyJ')" ontouchend="on('KeyJ')"></button><!--
 	-->
 </body>
 </html>

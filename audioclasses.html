@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, height=device-height, initial-scale=1, maximum-scale=1, user-scalable=no">
+	<style>
+	
+	body {
+		height: 100%;
+		width: 100%;
+	}
+	
+	.white {
+		background-color: white;
+		z-index: 10;
+	}
+	
+	.black {
+		background-color: black;
+		z-index: 20;
+		position: absolute;
+	}
+	
+	@media (orientation: landscape) {
+		html {
+			height: 97%;
+			width: 97%;
+		}
+		
+		#C, #D, #E, #F, #G, #A, #B, #c {
+			width: 10%;
+			height: 100%;
+		}
+		
+		.black {
+			top: 2.5%;
+		}
+		
+		#Db, #Eb, #Gb, #Ab, #Bb {
+			width: 8%;
+			height: 50%;
+		}
+		
+		#Db {
+			left: 7%;
+		}
+		
+		#Eb {
+			left: 16.5%;
+		}
+		
+		#Gb {
+			left: 36%;
+		}
+		
+		#Ab {
+			left: 46%;
+		}
+		
+		#Bb {
+			left: 55.5%;
+		}
+	}
+	
+	@media (orientation: portrait) {
+		html {
+			height: 97%;
+			width: 97%;
+		}
+		
+		#C,#D, #E, #F, #G, #A, #B, #c {
+			width: 12.5%;
+			height: 50%;
+		}
+		
+		.black {
+			top: 1.4%;
+		}
+		
+		#Db, #Eb, #Gb, #Ab, #Bb {
+			width: 10%;
+			height: 25%;
+		}
+		
+		#Db {
+			left: 9%;
+		}
+		
+		#Eb {
+			left: 21%;
+		}
+		
+		#Gb {
+			left: 45%;
+		}
+		
+		#Ab {
+			left: 57%;
+		}
+		
+		#Bb {
+			left: 70%;
+		}
+	}
+	
+	@media only screen and (min-width: 768px){
+		#C,#D, #E, #F, #G, #A, #B, #c {
+			height: 400px;
+			width: 100px;
+		}
+		
+		.black {
+			top: 8px;
+		}
+		
+		#Db, #Eb, #Gb, #Ab, #Bb {
+			height: 190px;
+			width: 70px;
+		}
+		
+		#Db {
+			left: 73px;
+		}
+		
+		#Eb {
+			left: 173px;
+		}
+		
+		#Gb {
+			left: 373px;
+		}
+		
+		#Ab {
+			left: 473px;
+		}
+		
+		#Bb {
+			left: 573px;
+		}
+	}
+	</style>
+</head>
+<script>
+	class Component {
+		constructor() {
+			this.output = audioCtx.createGain();
+		}
+		
+		connect(target) {
+			this.output.connect(target);
+		}
+		
+		disconnect(target) {
+			this.output.disconnect(target);
+		}
+	}
+	
+	class In extends Component {
+		constructor() {
+			super();
+			this.input = audioCtx.createGain();
+		}
+	}
+	
+	class Oscillator extends Component {
+		constructor(typeHi = 'triangle', typeLo = 'square') {
+			super();
+			this.oscHi = audioCtx.createOscillator();
+			this.oscHi.type = typeHi;
+			this.oscHi.start();
+			
+			this.oscLo = audioCtx.createOscillator();
+			this.oscLo.type = typeLo;
+			this.oscLo.start();
+			
+			this.oscHi.connect(this.output);
+			this.oscLo.connect(this.output);
+		}
+		
+		setFrequency(freq) {
+			this.oscHi.frequency.value = freq;
+			this.oscLo.frequency.value = freq / 2;
+		}
+		
+		getFrequency() {
+			return this.oscHi.frequency.value;
+		}
+	}
+	
+	class LoRes extends In {
+		constructor() {
+			super();
+			this.delay = [];
+			this.filter = [];
+			this.feedback = [];
+			for (var i = 0; i < 6; i++) {
+				var del = audioCtx.createDelay();
+				del.delayTime.value = 0.1 + 0.03 * i;
+				this.delay.push(del);
+				
+				var feed = audioCtx.createGain();
+				feed.gain.value = 0.7 - 0.1 * i;
+				this.feedback.push(feed);
+				
+				var filt = audioCtx.createBiquadFilter();
+				filt.frequency.value = 3000 - 500 * i;
+				this.filter.push(filt);
+			}
+		
+			this.input.connect(this.output);
+			this.input.connect(this.delay[0]);
+			for (var i = 0; i < 6; i++) {
+				this.delay[i].connect(this.feedback[i]);
+				this.feedback[i].connect(this.filter[i]);
+				this.filter[i].connect(this.output);
+				if (i < 5) {
+					this.filter[i].connect(this.delay[i + 1]);
+				}
+			}
+			console.log(this.delay);
+			this.filter[5].connect(this.output);
+		}
+	}
+	
+	class Distortion extends In {
+		constructor() {
+			super();
+			this.waveShaper = audioCtx.createWaveShaper();
+			waveShaper.curve = makeDistortionCurve(amount, n_samp);
+			this.input.connect(waveShaper);
+			waveShaper.connect(output);
+		}
+		
+		makeDistortionCurve(amount = 20, n_samp = 44100) {
+			var k = typeof amount === 'number' ? amount : 50,
+				n_samples = n_samp,
+				curve = new Float32Array(n_samples),
+				deg = Math.PI / 180,
+				i = 0,
+				x;
+			for (i ; i < n_samples; ++i ) {
+				x = i * 2 / n_samples - 1;
+				curve[i] = ( 3 + k ) * x * 20 * deg / ( Math.PI + k * Math.abs(x) );
+			}
+			return curve;
+		};
+	}
+	
+	var notes = {'KeyZ': 262, 'KeyS': 277, 'KeyX': 294, 'KeyD': 311, 'KeyC': 330, 'KeyV': 349, 'KeyG': 370, 'KeyB': 392, 'KeyH': 415, 'KeyN': 440, 'KeyJ': 466, 'KeyM': 494, 'Comma': 523};
+	var audioCtx;
+	var oscOne;
+	var oscTwo;
+	var distortion;
+	var delay;
+	var feedback;
+	var filter = [];
+	var gainNode;
+	var isStarted = false;
+	var isOn = [false, false, false];
+	
+	init = function() {
+		audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+		
+		oscOne = new Oscillator();
+		
+		delay = new LoRes();
+		
+		connect(oscOne, audioCtx.destination);
+		connect(oscOne, delay.input);
+		connect(delay, audioCtx.destination)
+
+	}
+	
+	connect = function(one, two) {
+		one.connect(two);
+	}
+	
+	disconnect = function(one, two) {
+		one.disconnect(two);
+	}
+
+	on = function(note) {
+		if (!isStarted) {
+			init();
+			isStarted = true;
+		}
+		if (isOn) {
+			off();
+		}
+		if (notes[note]) {
+			oscOne.setFrequency(notes[note]);
+			connect(oscOne, audioCtx.destination);
+			connect(oscOne, delay.input);
+			isOn = true;
+		}
+	}
+
+	off = function() {
+		if (isOn) {
+			disconnect(oscOne, audioCtx.destination);
+			disconnect(oscOne, delay.input);
+			isOn = false;
+		}
+	}
+
+	document.addEventListener('keydown', function(e) {
+		on(e.code);
+	})
+
+	document.addEventListener('keyup', function() {
+		off();
+	})
+</script>
+<body>
+	   <button id="C" class="white" onmousedown="on('KeyZ')" onmouseup="off()" ontouchstart="on('KeyZ')" ontouchend="off('KeyZ')"></button><!--
+	--><button id="D" class="white" onmousedown="on('KeyX')" onmouseup="off()" ontouchstart="on('KeyX')" ontouchend="off('KeyX')"></button><!--
+	--><button id="E" class="white" onmousedown="on('KeyC')" onmouseup="off()" ontouchstart="on('KeyC')" ontouchend="off('KeyC')"></button><!--
+	--><button id="F" class="white" onmousedown="on('KeyV')" onmouseup="off()" ontouchstart="on('KeyV')" ontouchend="off('KeyV')"></button><!--
+	--><button id="G" class="white" onmousedown="on('KeyB')" onmouseup="off()" ontouchstart="on('KeyB')" ontouchend="off('KeyB')"></button><!--
+	--><button id="A" class="white" onmousedown="on('KeyN')" onmouseup="off()" ontouchstart="on('KeyN')" ontouchend="off('KeyN')"></button><!--
+	--><button id="B" class="white" onmousedown="on('KeyM')" onmouseup="off()" ontouchstart="on('KeyM')" ontouchend="off('KeyM')"></button><!--
+	--><button id="c" class="white" onmousedown="on('Comma')" onmouseup="off()" ontouchstart="on('Comma')" ontouchend="off('Comma')"></button><!--
+	--><span></span><!--
+	--><button id="Db" class="black" onmousedown="on('KeyS')" onmouseup="off()" ontouchstart="on('KeyS')" ontouchend="off('KeyS')"></button><!--
+	--><button id="Eb" class="black" onmousedown="on('KeyD')" onmouseup="off()" ontouchstart="on('KeyD')" ontouchend="off('KeyD')"></button><!--
+	--><button id="Gb" class="black" onmousedown="on('KeyG')" onmouseup="off()" ontouchstart="on('KeyG')" ontouchend="off('KeyG')"></button><!--
+	--><button id="Ab" class="black" onmousedown="on('KeyH')" onmouseup="off()" ontouchstart="on('KeyH')" ontouchend="off('KeyH')"></button><!--
+	--><button id="Bb" class="black" onmousedown="on('KeyJ')" onmouseup="off()" ontouchstart="on('KeyJ')" ontouchend="off('KeyJ')"></button><!--
+	-->
+</body>
+</html>

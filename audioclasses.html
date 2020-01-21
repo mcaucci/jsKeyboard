@@ -216,7 +216,6 @@
 					this.filter[i].connect(this.delay[i + 1]);
 				}
 			}
-			console.log(this.delay);
 			this.filter[5].connect(this.output);
 		}
 	}
@@ -249,23 +248,39 @@
 	var audioCtx;
 	var oscOne;
 	var oscTwo;
+	var oscThree;
 	var distortion;
 	var delay;
 	var feedback;
 	var filter = [];
 	var gainNode;
 	var isStarted = false;
-	var isOn = [false, false, false];
+	var polyphonic;
 	
 	init = function() {
 		audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 		
 		oscOne = new Oscillator();
+		oscTwo = new Oscillator();
+		oscThree = new Oscillator();
+		
+		polyphonic = [
+			{'osc': oscOne, 'isOn': false, 'key': undefined},
+			{'osc': oscTwo, 'isOn': false, 'key': undefined},
+			{'osc': oscThree, 'isOn': false, 'key': undefined}
+		]
+		polyphonic.push(oscOne);
+		polyphonic.push(oscTwo);
+		polyphonic.push(oscThree);
 		
 		delay = new LoRes();
 		
 		connect(oscOne, audioCtx.destination);
-		connect(oscOne, delay.input);
+		connect(oscOne, audioCtx.destination);
+		connect(oscTwo, delay.input);
+		connect(oscTwo, audioCtx.destination);
+		connect(oscThree, delay.input);
+		connect(oscThree, delay.input);
 		connect(delay, audioCtx.destination)
 
 	}
@@ -283,23 +298,24 @@
 			init();
 			isStarted = true;
 		}
-		if (isOn) {
-			off();
-		}
-		if (notes[note]) {
-			oscOne.setFrequency(notes[note]);
-			connect(oscOne, audioCtx.destination);
-			connect(oscOne, delay.input);
-			isOn = true;
+		
+		var index = polyphonic.findIndex(obj => obj.isOn === false);
+		if (index != -1) {
+			polyphonic[index].osc.setFrequency(notes[note]);
+			polyphonic[index].isOn = true;
+			polyphonic[index].key = notes[note];
+			console.log('obj ' + polyphonic[index].osc + ', isOn ' + polyphonic[index].isOn + ', key ' + polyphonic[index].key);
+			connect(polyphonic[index].osc, audioCtx.destination);
+			connect(polyphonic[index].osc, delay.input);
 		}
 	}
 
-	off = function() {
-		if (isOn) {
-			disconnect(oscOne, audioCtx.destination);
-			disconnect(oscOne, delay.input);
-			isOn = false;
-		}
+	off = function(note) {
+		var index = polyphonic.findIndex(obj => obj.key === notes[note]);
+		polyphonic[index].isOn = false;
+		console.log(polyphonic[index]);
+		disconnect(polyphonic[index].osc, audioCtx.destination);
+		disconnect(polyphonic[index].osc, delay.input);
 	}
 
 	document.addEventListener('keydown', function(e) {
@@ -311,20 +327,20 @@
 	})
 </script>
 <body>
-	   <button id="C" class="white" onmousedown="on('KeyZ')" onmouseup="off()" ontouchstart="on('KeyZ')" ontouchend="off('KeyZ')"></button><!--
-	--><button id="D" class="white" onmousedown="on('KeyX')" onmouseup="off()" ontouchstart="on('KeyX')" ontouchend="off('KeyX')"></button><!--
-	--><button id="E" class="white" onmousedown="on('KeyC')" onmouseup="off()" ontouchstart="on('KeyC')" ontouchend="off('KeyC')"></button><!--
-	--><button id="F" class="white" onmousedown="on('KeyV')" onmouseup="off()" ontouchstart="on('KeyV')" ontouchend="off('KeyV')"></button><!--
-	--><button id="G" class="white" onmousedown="on('KeyB')" onmouseup="off()" ontouchstart="on('KeyB')" ontouchend="off('KeyB')"></button><!--
-	--><button id="A" class="white" onmousedown="on('KeyN')" onmouseup="off()" ontouchstart="on('KeyN')" ontouchend="off('KeyN')"></button><!--
-	--><button id="B" class="white" onmousedown="on('KeyM')" onmouseup="off()" ontouchstart="on('KeyM')" ontouchend="off('KeyM')"></button><!--
-	--><button id="c" class="white" onmousedown="on('Comma')" onmouseup="off()" ontouchstart="on('Comma')" ontouchend="off('Comma')"></button><!--
+	   <button id="C" class="white" onmousedown="on('KeyZ')" onmouseup="off('KeyZ')" ontouchstart="on('KeyZ')" ontouchend="off('KeyZ')"></button><!--
+	--><button id="D" class="white" onmousedown="on('KeyX')" onmouseup="off('KeyX')" ontouchstart="on('KeyX')" ontouchend="off('KeyX')"></button><!--
+	--><button id="E" class="white" onmousedown="on('KeyC')" onmouseup="off('KeyC')" ontouchstart="on('KeyC')" ontouchend="off('KeyC')"></button><!--
+	--><button id="F" class="white" onmousedown="on('KeyV')" onmouseup="off('KeyV')" ontouchstart="on('KeyV')" ontouchend="off('KeyV')"></button><!--
+	--><button id="G" class="white" onmousedown="on('KeyB')" onmouseup="off('KeyB')" ontouchstart="on('KeyB')" ontouchend="off('KeyB')"></button><!--
+	--><button id="A" class="white" onmousedown="on('KeyN')" onmouseup="off('KeyN')" ontouchstart="on('KeyN')" ontouchend="off('KeyN')"></button><!--
+	--><button id="B" class="white" onmousedown="on('KeyM')" onmouseup="off('KeyM')" ontouchstart="on('KeyM')" ontouchend="off('KeyM')"></button><!--
+	--><button id="c" class="white" onmousedown="on('Comma')" onmouseup="off('Comma')" ontouchstart="on('Comma')" ontouchend="off('Comma')"></button><!--
 	--><span></span><!--
-	--><button id="Db" class="black" onmousedown="on('KeyS')" onmouseup="off()" ontouchstart="on('KeyS')" ontouchend="off('KeyS')"></button><!--
-	--><button id="Eb" class="black" onmousedown="on('KeyD')" onmouseup="off()" ontouchstart="on('KeyD')" ontouchend="off('KeyD')"></button><!--
-	--><button id="Gb" class="black" onmousedown="on('KeyG')" onmouseup="off()" ontouchstart="on('KeyG')" ontouchend="off('KeyG')"></button><!--
-	--><button id="Ab" class="black" onmousedown="on('KeyH')" onmouseup="off()" ontouchstart="on('KeyH')" ontouchend="off('KeyH')"></button><!--
-	--><button id="Bb" class="black" onmousedown="on('KeyJ')" onmouseup="off()" ontouchstart="on('KeyJ')" ontouchend="off('KeyJ')"></button><!--
+	--><button id="Db" class="black" onmousedown="on('KeyS')" onmouseup="off('KeyS')" ontouchstart="on('KeyS')" ontouchend="off('KeyS')"></button><!--
+	--><button id="Eb" class="black" onmousedown="on('KeyD')" onmouseup="off('KeyD')" ontouchstart="on('KeyD')" ontouchend="off('KeyD')"></button><!--
+	--><button id="Gb" class="black" onmousedown="on('KeyG')" onmouseup="off('KeyG')" ontouchstart="on('KeyG')" ontouchend="off('KeyG')"></button><!--
+	--><button id="Ab" class="black" onmousedown="on('KeyH')" onmouseup="off('KeyH')" ontouchstart="on('KeyH')" ontouchend="off('KeyH')"></button><!--
+	--><button id="Bb" class="black" onmousedown="on('KeyJ')" onmouseup="off('KeyJ')" ontouchstart="on('KeyJ')" ontouchend="off('KeyJ')"></button><!--
 	-->
 </body>
 </html>

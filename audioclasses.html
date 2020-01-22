@@ -174,49 +174,59 @@
 			
 			this.oscHi.connect(this.output);
 			this.oscLo.connect(this.output);
+			this.output.gain.value = 0;
+			console.log(this.output.gain.value);
 		}
 		
 		setFrequency(freq) {
-			this.oscHi.frequency.value = freq;
-			this.oscLo.frequency.value = freq / 2;
+			this.oscHi.frequency.value = freq / 2;
+			this.oscLo.frequency.value = freq / 4;
 		}
 		
 		getFrequency() {
 			return this.oscHi.frequency.value;
 		}
+		
+		keyDown() {
+			this.output.gain.value = 1;
+		}
+		
+		keyUp() {
+			this.output.gain.value = 0;
+		}
 	}
 	
 	class LoRes extends In {
-		constructor() {
+		constructor(size = 6, d = 100, fb = 0.7, f = 3000, dt = 30, dfb = 0.05, df = 200) {
 			super();
 			this.delay = [];
 			this.filter = [];
 			this.feedback = [];
-			for (var i = 0; i < 6; i++) {
+			for (var i = 0; i < size; i++) {
 				var del = audioCtx.createDelay();
-				del.delayTime.value = 0.1 + 0.03 * i;
+				del.delayTime.value = d / 1000 + dt / 1000 * i;
 				this.delay.push(del);
 				
 				var feed = audioCtx.createGain();
-				feed.gain.value = 0.7 - 0.1 * i;
+				feed.gain.value = fb - dfb * i;
 				this.feedback.push(feed);
 				
 				var filt = audioCtx.createBiquadFilter();
-				filt.frequency.value = 3000 - 500 * i;
+				filt.frequency.value = f - df * i;
 				this.filter.push(filt);
 			}
 		
 			this.input.connect(this.output);
 			this.input.connect(this.delay[0]);
-			for (var i = 0; i < 6; i++) {
+			for (var i = 0; i < size; i++) {
 				this.delay[i].connect(this.feedback[i]);
 				this.feedback[i].connect(this.filter[i]);
 				this.filter[i].connect(this.output);
-				if (i < 5) {
+				if (i < size - 1) {
 					this.filter[i].connect(this.delay[i + 1]);
 				}
 			}
-			this.filter[5].connect(this.output);
+			this.filter[size - 1].connect(this.output);
 		}
 	}
 	
@@ -245,6 +255,7 @@
 	}
 	
 	var notes = {'KeyZ': 262, 'KeyS': 277, 'KeyX': 294, 'KeyD': 311, 'KeyC': 330, 'KeyV': 349, 'KeyG': 370, 'KeyB': 392, 'KeyH': 415, 'KeyN': 440, 'KeyJ': 466, 'KeyM': 494, 'Comma': 523};
+	var keys = {'KeyZ': false, 'KeyS': false, 'KeyX': false, 'KeyD': false, 'KeyC': false, 'KeyV': false, 'KeyG': false, 'KeyB': false, 'KeyH': false, 'KeyN': false, 'KeyJ': false, 'KeyM': false, 'Comma': false};
 	var audioCtx;
 	var oscOne;
 	var oscTwo;
@@ -256,6 +267,7 @@
 	var gainNode;
 	var isStarted = false;
 	var polyphonic;
+	var isPressed = [false, false, false];
 	
 	init = function() {
 		audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -275,14 +287,13 @@
 		
 		delay = new LoRes();
 		
-		connect(oscOne, audioCtx.destination);
+		connect(oscOne, delay.input);
 		connect(oscOne, audioCtx.destination);
 		connect(oscTwo, delay.input);
 		connect(oscTwo, audioCtx.destination);
 		connect(oscThree, delay.input);
-		connect(oscThree, delay.input);
-		connect(delay, audioCtx.destination)
-
+		connect(oscThree, audioCtx.destination);
+		connect(delay, audioCtx.destination);
 	}
 	
 	connect = function(one, two) {
@@ -294,36 +305,46 @@
 	}
 
 	on = function(note) {
-		if (!isStarted) {
-			init();
-			isStarted = true;
-		}
-		
 		var index = polyphonic.findIndex(obj => obj.isOn === false);
 		if (index != -1) {
 			polyphonic[index].osc.setFrequency(notes[note]);
-			polyphonic[index].isOn = true;
 			polyphonic[index].key = notes[note];
-			console.log('obj ' + polyphonic[index].osc + ', isOn ' + polyphonic[index].isOn + ', key ' + polyphonic[index].key);
-			connect(polyphonic[index].osc, audioCtx.destination);
-			connect(polyphonic[index].osc, delay.input);
+			//connect(polyphonic[index].osc, audioCtx.destination);
+			//connect(polyphonic[index].osc, delay.input);
+			polyphonic[index].osc.keyDown();
+			polyphonic[index].isOn = true;
 		}
 	}
 
 	off = function(note) {
 		var index = polyphonic.findIndex(obj => obj.key === notes[note]);
-		polyphonic[index].isOn = false;
-		console.log(polyphonic[index]);
-		disconnect(polyphonic[index].osc, audioCtx.destination);
-		disconnect(polyphonic[index].osc, delay.input);
+		if (index != -1) {
+			//disconnect(polyphonic[index].osc, audioCtx.destination);
+			//disconnect(polyphonic[index].osc, delay.input);
+			polyphonic[index].osc.keyUp();
+			polyphonic[index].isOn = false;
+			console.log(index);
+		}
 	}
 
 	document.addEventListener('keydown', function(e) {
-		on(e.code);
+		if (!isStarted) {
+			init();
+			isStarted = true;
+		}
+		
+		if (keys[e.code] === false) {
+			on(e.code);
+			keys[e.code] = true;
+			console.log(keys[e.code]);
+		}
 	})
 
-	document.addEventListener('keyup', function() {
-		off();
+	document.addEventListener('keyup', function(e) {
+		if (keys[e.code] === true) {
+			off(e.code);
+			keys[e.code] = false;
+		}
 	})
 </script>
 <body>

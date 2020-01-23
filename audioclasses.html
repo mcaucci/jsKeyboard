@@ -142,6 +142,7 @@
 <script>
 	class Component {
 		constructor() {
+			this.flux = [];
 			this.output = audioCtx.createGain();
 		}
 		
@@ -158,6 +159,13 @@
 		constructor() {
 			super();
 			this.input = audioCtx.createGain();
+			this.flux.push(this.input);
+			console.log(this.flux);
+			this.bypass = audioCtx.createGain();
+		}
+		
+		bypass() {
+			
 		}
 	}
 	
@@ -175,7 +183,6 @@
 			this.oscHi.connect(this.output);
 			this.oscLo.connect(this.output);
 			this.output.gain.value = 0;
-			console.log(this.output.gain.value);
 		}
 		
 		setFrequency(freq) {

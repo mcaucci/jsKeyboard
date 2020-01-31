@@ -142,7 +142,6 @@
 <script>
 	class Component {
 		constructor() {
-			this.flux = [];
 			this.output = audioCtx.createGain();
 		}
 		
@@ -153,19 +152,21 @@
 		disconnect(target) {
 			this.output.disconnect(target);
 		}
-	}
-	
-	class In extends Component {
-		constructor() {
-			super();
-			this.input = audioCtx.createGain();
-			this.flux.push(this.input);
-			console.log(this.flux);
-			this.bypass = audioCtx.createGain();
+		
+		setOutVol(vol) {
+			this.output.gain.value = vol;
 		}
 		
-		bypass() {
-			
+		getOutVol() {
+			return this.output.gain.value;
+		}
+	}
+	
+	class ComponentIn extends Component {
+		constructor() {
+			super();
+			this.isBypassed = false;
+			this.input = audioCtx.createGain();
 		}
 	}
 	
@@ -203,7 +204,7 @@
 		}
 	}
 	
-	class LoRes extends In {
+	class LoRes extends ComponentIn {
 		constructor(size = 6, d = 100, fb = 0.7, f = 3000, dt = 30, dfb = 0.05, df = 200) {
 			super();
 			this.delay = [];
@@ -235,15 +236,33 @@
 			}
 			this.filter[size - 1].connect(this.output);
 		}
+		
+		bypass() {
+			if (!this.isBypassed) {
+				this.input.disconnect(this.delay[0]);
+				this.filter[this.filter.length - 1].disconnect(this.output);
+			} else {
+				this.input.connect(this.delay[0]);
+				this.filter[this.filter.length - 1].connect(this.output);
+			}
+			this.isBypassed = !this.isBypassed;
+		}
 	}
 	
-	class Distortion extends In {
+	class PingPong extends ComponentIn {
 		constructor() {
 			super();
+			
+		}
+	}
+	
+	class Distortion extends ComponentIn {
+		constructor(amount = 20, n_samp = 44100) {
+			super();
 			this.waveShaper = audioCtx.createWaveShaper();
-			waveShaper.curve = makeDistortionCurve(amount, n_samp);
-			this.input.connect(waveShaper);
-			waveShaper.connect(output);
+			this.waveShaper.curve = this.makeDistortionCurve(amount, n_samp);
+			this.input.connect(this.waveShaper);
+			this.waveShaper.connect(this.output);
 		}
 		
 		makeDistortionCurve(amount = 20, n_samp = 44100) {
@@ -259,6 +278,17 @@
 			}
 			return curve;
 		};
+		
+		bypass() {
+			if (!this.isBypassed) {
+				this.input.disconnect(this.waveShaper);
+				this.input.connect(this.output);
+			} else {
+				this.input.connect(this.waveShaper);
+				this.input.disconnect(this.output);
+			}
+			this.isBypassed = !this.isBypassed;
+		}
 	}
 	
 	var notes = {'KeyZ': 262, 'KeyS': 277, 'KeyX': 294, 'KeyD': 311, 'KeyC': 330, 'KeyV': 349, 'KeyG': 370, 'KeyB': 392, 'KeyH': 415, 'KeyN': 440, 'KeyJ': 466, 'KeyM': 494, 'Comma': 523};
@@ -292,7 +322,7 @@
 		polyphonic.push(oscTwo);
 		polyphonic.push(oscThree);
 		
-		delay = new LoRes();
+		delay = new LoRes();		
 		
 		connect(oscOne, delay.input);
 		connect(oscOne, audioCtx.destination);
@@ -355,6 +385,7 @@
 	})
 </script>
 <body>
+	<div><button onclick="delay.bypass()">click</button></div>
 	   <button id="C" class="white" onmousedown="on('KeyZ')" onmouseup="off('KeyZ')" ontouchstart="on('KeyZ')" ontouchend="off('KeyZ')"></button><!--
 	--><button id="D" class="white" onmousedown="on('KeyX')" onmouseup="off('KeyX')" ontouchstart="on('KeyX')" ontouchend="off('KeyX')"></button><!--
 	--><button id="E" class="white" onmousedown="on('KeyC')" onmouseup="off('KeyC')" ontouchstart="on('KeyC')" ontouchend="off('KeyC')"></button><!--
